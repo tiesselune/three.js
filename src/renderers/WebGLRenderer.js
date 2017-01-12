@@ -172,15 +172,20 @@ function WebGLRenderer( parameters ) {
 
 			hash: '',
 
-		ambient: [ 0, 0, 0 ],
+		ambient: [],
+		ambiantAffectedLayers: [],
 		directional: [],
+		directionalAffectedLayers: [],
 		directionalShadowMap: [],
 		directionalShadowMatrix: [],
 		spot: [],
+		spotAffectedLayers: [],
 		spotShadowMap: [],
 		spotShadowMatrix: [],
 		rectArea: [],
+		rectAreaAffectedLayers: [],
 		point: [],
+		pointAffectedLayers: [],
 		pointShadowMap: [],
 		pointShadowMatrix: [],
 		hemi: [],
@@ -188,6 +193,7 @@ function WebGLRenderer( parameters ) {
 			shadows: []
 
 		},
+		hemiAffectedLayers: [],
 
 		// info
 
@@ -1631,21 +1637,30 @@ function WebGLRenderer( parameters ) {
 
 		if ( material.lights ) {
 
+			// get all lights affecting this object's layers
+
+			var directionalSetup = filterLights( object.layers, _lights.directionalAffectedLayers, _lights.directional, _lights.directionalShadowMap, _lights.directionalShadowMatrix );
+			var spotSetup = filterLights( object.layers, _lights.spotAffectedLayers, _lights.spot, _lights.spotShadowMap, _lights.spotShadowMatrix );
+			var rectAreaSetup = filterLights( object.layers, _lights.rectAreaAffectedLayers, _lights.rectArea );
+			var pointSetup = filterLights( object.layers, _lights.pointAffectedLayers, _lights.point, _lights.pointShadowMap, _lights.pointShadowMatrix );
+			var hemiSetup = filterLights( object.layers, _lights.hemiAffectedLayers, _lights.hemi);
+
 			// wire up the material to this renderer's lighting state
 
-			uniforms.ambientLightColor.value = _lights.ambient;
-			uniforms.directionalLights.value = _lights.directional;
-			uniforms.spotLights.value = _lights.spot;
-			uniforms.rectAreaLights.value = _lights.rectArea;
-			uniforms.pointLights.value = _lights.point;
-			uniforms.hemisphereLights.value = _lights.hemi;
 
-			uniforms.directionalShadowMap.value = _lights.directionalShadowMap;
-			uniforms.directionalShadowMatrix.value = _lights.directionalShadowMatrix;
-			uniforms.spotShadowMap.value = _lights.spotShadowMap;
-			uniforms.spotShadowMatrix.value = _lights.spotShadowMatrix;
-			uniforms.pointShadowMap.value = _lights.pointShadowMap;
-			uniforms.pointShadowMatrix.value = _lights.pointShadowMatrix;
+			uniforms.ambientLightColor.value = filterAmbiantLights( object.layers, _lights.ambient, _lights.ambiantAffectedLayers );
+			uniforms.directionalLights.value = directionalSetup.lights;
+			uniforms.spotLights.value = spotSetup.lights;
+			uniforms.rectAreaLights.value = rectAreaSetup.lights;
+			uniforms.pointLights.value = pointSetup.lights;
+			uniforms.hemisphereLights.value = hemiSetup.lights;
+
+			uniforms.directionalShadowMap.value = directionalSetup.shadowMaps;
+			uniforms.directionalShadowMatrix.value = directionalSetup.shadowMatrices;
+			uniforms.spotShadowMap.value = spotSetup.shadowMaps;
+			uniforms.spotShadowMatrix.value =  spotSetup.shadowMatrices;
+			uniforms.pointShadowMap.value = pointSetup.shadowMaps;
+			uniforms.pointShadowMatrix.value = pointSetup.shadowMatrices;
 			// TODO (abelnation): add area lights shadow info to uniforms
 
 		}
@@ -1655,6 +1670,57 @@ function WebGLRenderer( parameters ) {
 				WebGLUniforms.seqWithValue( progUniforms.seq, uniforms );
 
 		materialProperties.uniformsList = uniformsList;
+
+		function filterLights( Objectlayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
+
+			var result = { lights : [], shadowMaps [], shadowMatrices : []};
+			var i = 0, light, LightLayers;
+
+			for ( i = 0;  i < lights.length; i++) {
+
+				light = lights[i];
+				lightLayers = lightAffectedLayers[i];
+
+				if ( lightLayers.test( layers.mask ) ){
+
+					result.lights.push( light );
+
+					if( shadowMaps ){
+						result.shadowMaps.push( shadowMaps[i] );
+					}
+					if( shadowMatrices ){
+						result.shadowMatrices.push( shadowMatrices[i] );
+					}
+
+				}
+			}
+
+			return result;
+
+		}
+
+		function filterAmbiantLights( layers, lights , lightAffectedLayers ) {
+			var result = [0,0,0];
+			var i = 0, light, lightLayers;
+
+			for ( i = 0;  i < lights.length; i++) {
+
+				light = lights[i];
+				lightLayers = lightAffectedLayers[i]
+
+				if ( lightLayers.test( layers.mask ) ){
+
+					result[0] += light.color.r;
+					result[1] += light.color.g;
+					result[2] += light.color.b;
+
+				}
+
+			}
+
+			return result;
+
+		}
 
 	}
 
@@ -2311,8 +2377,11 @@ function WebGLRenderer( parameters ) {
 			distance,
 			shadowMap,
 
+			affectedLayers,
+
 			viewMatrix = camera.matrixWorldInverse,
 
+		ambiantLength = 0,
 		directionalLength = 0,
 		pointLength = 0,
 		spotLength = 0,
@@ -2327,13 +2396,16 @@ function WebGLRenderer( parameters ) {
 			intensity = light.intensity;
 			distance = light.distance;
 
+			affectedLayers = light.affectedLayers;
+
 			shadowMap = ( light.shadow && light.shadow.map ) ? light.shadow.map.texture : null;
 
 			if ( light.isAmbientLight ) {
 
-				r += color.r * intensity;
-				g += color.g * intensity;
-				b += color.b * intensity;
+				color.multiplyScalar(intensity);
+
+				_lights.ambiantAffectedLayers[ ambiantLength] = affectedLayers;
+				_lights.ambiant[ ambiantLength ++ ] = color;
 
 			} else if ( light.isDirectionalLight ) {
 
@@ -2357,6 +2429,7 @@ function WebGLRenderer( parameters ) {
 
 				_lights.directionalShadowMap[ directionalLength ] = shadowMap;
 				_lights.directionalShadowMatrix[ directionalLength ] = light.shadow.matrix;
+				_lights.directionalAffectedLayers[ directionalLength ] = affectedLayers;
 				_lights.directional[ directionalLength ++ ] = uniforms;
 
 			} else if ( light.isSpotLight ) {
@@ -2390,6 +2463,7 @@ function WebGLRenderer( parameters ) {
 
 				_lights.spotShadowMap[ spotLength ] = shadowMap;
 				_lights.spotShadowMatrix[ spotLength ] = light.shadow.matrix;
+				_lights.spotAffectedLayers[ spotLength ] = affectedLayers;
 				_lights.spot[ spotLength ++ ] = uniforms;
 
 			} else if ( light.isRectAreaLight ) {
@@ -2421,7 +2495,7 @@ function WebGLRenderer( parameters ) {
 
 				// TODO (abelnation): RectAreaLight distance?
 				// uniforms.distance = distance;
-
+				_lights.rectAreaAffectedLayers[ rectAreaLength ] = affectedLayers;
 				_lights.rectArea[ rectAreaLength ++ ] = uniforms;
 
 			} else if ( light.isPointLight ) {
@@ -2458,6 +2532,7 @@ function WebGLRenderer( parameters ) {
 				_vector3.setFromMatrixPosition( light.matrixWorld ).negate();
 				_lights.pointShadowMatrix[ pointLength ].identity().setPosition( _vector3 );
 
+				_lights.pointAffectedLayers[ pointLength ] = affectedLayers;
 				_lights.point[ pointLength ++ ] = uniforms;
 
 			} else if ( light.isHemisphereLight ) {
@@ -2471,16 +2546,14 @@ function WebGLRenderer( parameters ) {
 				uniforms.skyColor.copy( light.color ).multiplyScalar( intensity );
 				uniforms.groundColor.copy( light.groundColor ).multiplyScalar( intensity );
 
+				_lights.hemiAffectedLayers[ hemiLength ] = affectedLayers;
 				_lights.hemi[ hemiLength ++ ] = uniforms;
 
 			}
 
 		}
 
-		_lights.ambient[ 0 ] = r;
-		_lights.ambient[ 1 ] = g;
-		_lights.ambient[ 2 ] = b;
-
+		_lights.ambiant.length = ambiantLength;
 		_lights.directional.length = directionalLength;
 		_lights.spot.length = spotLength;
 		_lights.rectArea.length = rectAreaLength;
@@ -2488,7 +2561,7 @@ function WebGLRenderer( parameters ) {
 		_lights.hemi.length = hemiLength;
 
 		// TODO (sam-g-steel) why aren't we using join
-		_lights.hash = directionalLength + ',' + pointLength + ',' + spotLength + ',' + rectAreaLength + ',' + hemiLength + ',' + _lights.shadows.length;
+		_lights.hash = ambiantLength + ',' + directionalLength + ',' + pointLength + ',' + spotLength + ',' + rectAreaLength + ',' + hemiLength + ',' + _lights.shadows.length;
 
 	}
 

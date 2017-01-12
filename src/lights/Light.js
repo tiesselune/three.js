@@ -17,6 +17,9 @@ function Light( color, intensity ) {
 
 	this.receiveShadow = undefined;
 
+	this.affectedLayers = new Layers();
+	this.affectedLayers.mask = 255;
+
 }
 
 Light.prototype = Object.assign( Object.create( Object3D.prototype ), {
@@ -31,6 +34,9 @@ Light.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		this.color.copy( source.color );
 		this.intensity = source.intensity;
+
+		this.affectedLayers = new Layers();
+		this.affectedLayers.mask = source.affectedLayers.mask;
 
 		return this;
 
