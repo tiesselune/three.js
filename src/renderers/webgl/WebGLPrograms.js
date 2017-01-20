@@ -178,11 +178,11 @@ function WebGLPrograms( renderer, capabilities ) {
 			maxMorphTargets: renderer.maxMorphTargets,
 			maxMorphNormals: renderer.maxMorphNormals,
 
-			numDirLights: countLights(object,lights.directionalAffectedLayers),
-			numPointLights: countLights(object,lights.pointAffectedLayers),
-			numSpotLights: countLights(object,lights.spotAffectedLayers),
-			numRectAreaLights: countLights(object,lights.rectAreaAffectedLayers),
-			numHemiLights: countLights(object,lights.hemiAffectedLayers),
+			numDirLights: countLights( object,lights.directionalAffectedLayers ),
+			numPointLights: countLights( object,lights.pointAffectedLayers ),
+			numSpotLights: countLights( object,lights.spotAffectedLayers ),
+			numRectAreaLights: countLights( object,lights.rectAreaAffectedLayers ),
+			numHemiLights: countLights( object,lights.hemiAffectedLayers ),
 
 			numClippingPlanes: nClipPlanes,
 			numClipIntersection: nClipIntersection,
@@ -203,13 +203,13 @@ function WebGLPrograms( renderer, capabilities ) {
 
 		};
 
-		function countLights (object,lightLayers){
+		function countLights ( object, lightLayers ){
 
 			var i = 0, result = 0;
 
 			for ( i = 0; i < lightLayers.length; i++ ){
 
-				if(object.layers.test(lightLayers[i])){
+				if( object.layers.test( lightLayers[i] ) ){
 
 					result ++;
 

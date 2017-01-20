@@ -1672,6 +1672,9 @@ function WebGLRenderer( parameters ) {
 
 		materialProperties.uniformsList = uniformsList;
 
+		/* Function to only consider lights and shadow maps/matrices that should
+		affect the considered object */
+
 		function filterLights( objectLayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
 
 			var result = { lights : [], shadowMaps : [], shadowMatrices : []};
@@ -1704,6 +1707,8 @@ function WebGLRenderer( parameters ) {
 
 		}
 
+		/* Merge all ambient colors affecting the object's layer into a single color. */
+
 		function filterAmbiantLights( objectLayers, lightAffectedLayers, lights ) {
 			var result = [0,0,0];
 			var i = 0, light, lightLayers;
@@ -1728,6 +1733,8 @@ function WebGLRenderer( parameters ) {
 		}
 
 	}
+
+	//Get a unique Hash for this light setup taking layers into consideration.
 
 	function getMaterialLightHash( layers, hashes ){
 
@@ -2035,7 +2042,7 @@ function WebGLRenderer( parameters ) {
 			if ( m_uniforms.ltcMag !== undefined ) m_uniforms.ltcMag.value = THREE.UniformsLib.LTC_MAG_TEXTURE;
 
 			WebGLUniforms.upload(
-					_gl, materialProperties.uniformsList, m_uniforms, _this );
+				_gl, materialProperties.uniformsList, m_uniforms, _this );
 
 		}
 
@@ -2599,8 +2606,8 @@ function WebGLRenderer( parameters ) {
 		_lights.point.length = pointLength;
 		_lights.hemi.length = hemiLength;
 
-		// TODO (sam-g-steel) why aren't we using join
-		_lights.hash = ambientLength + ',' + directionalLength + ',' + pointLength + ',' + spotLength + ',' + rectAreaLength + ',' + hemiLength + ',' + _lights.shadows.length;
+		// Compute an array of light hashes (one per layer)
+
 		_lights.layeredHashes = arrayToHashes(hashMap);
 	}
 
@@ -2613,7 +2620,7 @@ function WebGLRenderer( parameters ) {
 
 	};
 
-	// Per-Layer light hashes via a map
+	// Function used to count lights per type and per layer using a flat array.
 
 	function addLightToLightHashMap(layers,hashMap,typeIndex,castShadow){
 
@@ -2650,6 +2657,8 @@ function WebGLRenderer( parameters ) {
 		}
 
 	}
+
+	// Function to make layer-specific light hashes from an array of specific size.
 
 	function arrayToHashes( array ){
 
