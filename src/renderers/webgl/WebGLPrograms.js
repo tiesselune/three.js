@@ -178,11 +178,11 @@ function WebGLPrograms( renderer, capabilities ) {
 			maxMorphTargets: renderer.maxMorphTargets,
 			maxMorphNormals: renderer.maxMorphNormals,
 
-			numDirLights: lights.directional.length,
-			numPointLights: lights.point.length,
-			numSpotLights: lights.spot.length,
-			numRectAreaLights: lights.rectArea.length,
-			numHemiLights: lights.hemi.length,
+			numDirLights: countLights(object,lights.directionalAffectedLayers),
+			numPointLights: countLights(object,lights.pointAffectedLayers),
+			numSpotLights: countLights(object,lights.spotAffectedLayers),
+			numRectAreaLights: countLights(object,lights.rectAreaAffectedLayers),
+			numHemiLights: countLights(object,lights.hemiAffectedLayers),
 
 			numClippingPlanes: nClipPlanes,
 			numClipIntersection: nClipIntersection,
@@ -202,6 +202,24 @@ function WebGLPrograms( renderer, capabilities ) {
 			depthPacking: ( material.depthPacking !== undefined ) ? material.depthPacking : false
 
 		};
+
+		function countLights (object,lightLayers){
+
+			var i = 0, result = 0;
+
+			for ( i = 0; i < lightLayers.length; i++ ){
+
+				if(object.layers.test(lightLayers[i])){
+
+					result ++;
+
+				}
+
+			}
+
+			return result;
+
+		}
 
 		return parameters;
 

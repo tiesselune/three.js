@@ -1,5 +1,6 @@
 import { Object3D } from '../core/Object3D';
 import { Color } from '../math/Color';
+import { Layers } from '../core/Layers';
 
 /**
  * @author mrdoob / http://mrdoob.com/
@@ -18,7 +19,7 @@ function Light( color, intensity ) {
 	this.receiveShadow = undefined;
 
 	this.affectedLayers = new Layers();
-	this.affectedLayers.mask = 255;
+	this.affectedLayers.mask = -1;
 
 }
 

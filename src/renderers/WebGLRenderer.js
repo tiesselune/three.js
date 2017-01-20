@@ -1,4 +1,4 @@
-import { REVISION, MaxEquation, MinEquation, RGB_ETC1_Format, RGBA_PVRTC_2BPPV1_Format, RGBA_PVRTC_4BPPV1_Format, RGB_PVRTC_2BPPV1_Format, RGB_PVRTC_4BPPV1_Format, RGBA_S3TC_DXT5_Format, RGBA_S3TC_DXT3_Format, RGBA_S3TC_DXT1_Format, RGB_S3TC_DXT1_Format, SrcAlphaSaturateFactor, OneMinusDstColorFactor, DstColorFactor, OneMinusDstAlphaFactor, DstAlphaFactor, OneMinusSrcAlphaFactor, SrcAlphaFactor, OneMinusSrcColorFactor, SrcColorFactor, OneFactor, ZeroFactor, ReverseSubtractEquation, SubtractEquation, AddEquation, DepthFormat, DepthStencilFormat, LuminanceAlphaFormat, LuminanceFormat, RGBAFormat, RGBFormat, AlphaFormat, HalfFloatType, FloatType, UnsignedIntType, IntType, UnsignedShortType, ShortType, ByteType, UnsignedInt248Type, UnsignedShort565Type, UnsignedShort5551Type, UnsignedShort4444Type, UnsignedByteType, LinearMipMapLinearFilter, LinearMipMapNearestFilter, LinearFilter, NearestMipMapLinearFilter, NearestMipMapNearestFilter, NearestFilter, MirroredRepeatWrapping, ClampToEdgeWrapping, RepeatWrapping, FrontFaceDirectionCW, NoBlending, BackSide, DoubleSide, TriangleFanDrawMode, TriangleStripDrawMode, TrianglesDrawMode, NoColors, FlatShading, LinearToneMapping } from '../constants';
+import { REVISION, MaxEquation, MinEquation, RGB_ETC1_Format, RGBA_PVRTC_2BPPV1_Format, RGBA_PVRTC_4BPPV1_Format, RGB_PVRTC_2BPPV1_Format, RGB_PVRTC_4BPPV1_Format, RGBA_S3TC_DXT5_Format, RGBA_S3TC_DXT3_Format, RGBA_S3TC_DXT1_Format, RGB_S3TC_DXT1_Format, SrcAlphaSaturateFactor, OneMinusDstColorFactor, DstColorFactor, OneMinusDstAlphaFactor, DstAlphaFactor, OneMinusSrcAlphaFactor, SrcAlphaFactor, OneMinusSrcColorFactor, SrcColorFactor, OneFactor, ZeroFactor, ReverseSubtractEquation, SubtractEquation, AddEquation, DepthFormat, DepthStencilFormat, LuminanceAlphaFormat, LuminanceFormat, RGBAFormat, RGBFormat, AlphaFormat, HalfFloatType, FloatType, UnsignedIntType, IntType, UnsignedShortType, ShortType, ByteType, UnsignedInt248Type, UnsignedShort565Type, UnsignedShort5551Type, UnsignedShort4444Type, UnsignedByteType, LinearMipMapLinearFilter, LinearMipMapNearestFilter, LinearFilter, NearestMipMapLinearFilter, NearestMipMapNearestFilter, NearestFilter, MirroredRepeatWrapping, ClampToEdgeWrapping, RepeatWrapping, FrontFaceDirectionCW, NoBlending, BackSide, DoubleSide, TriangleFanDrawMode, TriangleStripDrawMode, TrianglesDrawMode, NoColors, FlatShading, LinearToneMapping, NumberOfLightTypes } from '../constants';
 import { Matrix4 } from '../math/Matrix4';
 import { WebGLUniforms } from './webgl/WebGLUniforms';
 import { UniformsUtils } from './shaders/UniformsUtils';
@@ -171,9 +171,10 @@ function WebGLRenderer( parameters ) {
 		_lights = {
 
 			hash: '',
+			layeredHashes:[],
 
 		ambient: [],
-		ambiantAffectedLayers: [],
+		ambientAffectedLayers: [],
 		directional: [],
 		directionalAffectedLayers: [],
 		directionalShadowMap: [],
@@ -189,11 +190,11 @@ function WebGLRenderer( parameters ) {
 		pointShadowMap: [],
 		pointShadowMatrix: [],
 		hemi: [],
-
+		hemiAffectedLayers: [],
 			shadows: []
 
 		},
-		hemiAffectedLayers: [],
+
 
 		// info
 
@@ -1633,7 +1634,7 @@ function WebGLRenderer( parameters ) {
 
 		// store the light setup it was created for
 
-		materialProperties.lightsHash = _lights.hash;
+		materialProperties.lightsHash = getMaterialLightHash( object.layers, _lights.layeredHashes );
 
 		if ( material.lights ) {
 
@@ -1647,13 +1648,13 @@ function WebGLRenderer( parameters ) {
 
 			// wire up the material to this renderer's lighting state
 
-
-			uniforms.ambientLightColor.value = filterAmbiantLights( object.layers, _lights.ambient, _lights.ambiantAffectedLayers );
+			uniforms.ambientLightColor.value = filterAmbiantLights( object.layers, _lights.ambientAffectedLayers, _lights.ambient );
 			uniforms.directionalLights.value = directionalSetup.lights;
 			uniforms.spotLights.value = spotSetup.lights;
 			uniforms.rectAreaLights.value = rectAreaSetup.lights;
 			uniforms.pointLights.value = pointSetup.lights;
 			uniforms.hemisphereLights.value = hemiSetup.lights;
+
 
 			uniforms.directionalShadowMap.value = directionalSetup.shadowMaps;
 			uniforms.directionalShadowMatrix.value = directionalSetup.shadowMatrices;
@@ -1671,35 +1672,39 @@ function WebGLRenderer( parameters ) {
 
 		materialProperties.uniformsList = uniformsList;
 
-		function filterLights( Objectlayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
+		function filterLights( objectLayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
 
-			var result = { lights : [], shadowMaps [], shadowMatrices : []};
-			var i = 0, light, LightLayers;
+			var result = { lights : [], shadowMaps : [], shadowMatrices : []};
+			var i = 0, light, lightLayers;
+			var lightsLength = 0,shadowMapsLength = 0,shadowMatricesLength = 0;
 
 			for ( i = 0;  i < lights.length; i++) {
 
 				light = lights[i];
 				lightLayers = lightAffectedLayers[i];
 
-				if ( lightLayers.test( layers.mask ) ){
+				if ( lightLayers.test( objectLayers) ){
 
-					result.lights.push( light );
+					result.lights[lightsLength++] = light ;
 
 					if( shadowMaps ){
-						result.shadowMaps.push( shadowMaps[i] );
+						result.shadowMaps[shadowMapsLength++]  = shadowMaps[i];
 					}
 					if( shadowMatrices ){
-						result.shadowMatrices.push( shadowMatrices[i] );
+						result.shadowMatrices[shadowMatricesLength++]  = shadowMatrices[i];
 					}
 
 				}
 			}
+			result.lights.length = lightsLength;
+			result.shadowMaps.length = shadowMapsLength;
+			result.shadowMatrices.length = shadowMatricesLength;
 
 			return result;
 
 		}
 
-		function filterAmbiantLights( layers, lights , lightAffectedLayers ) {
+		function filterAmbiantLights( objectLayers, lightAffectedLayers, lights ) {
 			var result = [0,0,0];
 			var i = 0, light, lightLayers;
 
@@ -1708,11 +1713,11 @@ function WebGLRenderer( parameters ) {
 				light = lights[i];
 				lightLayers = lightAffectedLayers[i]
 
-				if ( lightLayers.test( layers.mask ) ){
+				if ( lightLayers.test( objectLayers ) ){
 
-					result[0] += light.color.r;
-					result[1] += light.color.g;
-					result[2] += light.color.b;
+					result[0] += light.r;
+					result[1] += light.g;
+					result[2] += light.b;
 
 				}
 
@@ -1721,6 +1726,27 @@ function WebGLRenderer( parameters ) {
 			return result;
 
 		}
+
+	}
+
+	function getMaterialLightHash( layers, hashes ){
+
+		var i = 0,
+		mask = 0,
+		hashArray = [];
+
+		for( i + 0; i < 32; i++ ){
+
+			mask = 1 << i;
+
+			if(mask & layers.mask){
+
+				hashArray.push( i + "->" + hashes[i] );
+
+			}
+
+		}
+		return hashArray.join('|');
 
 	}
 
@@ -1779,8 +1805,7 @@ function WebGLRenderer( parameters ) {
 
 				material.needsUpdate = true;
 
-			} else if ( material.lights && materialProperties.lightsHash !== _lights.hash ) {
-
+			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( object.layers, _lights.layeredHashes ) ) {
 				material.needsUpdate = true;
 
 			} else if ( materialProperties.numClippingPlanes !== undefined &&
@@ -2010,7 +2035,7 @@ function WebGLRenderer( parameters ) {
 			if ( m_uniforms.ltcMag !== undefined ) m_uniforms.ltcMag.value = THREE.UniformsLib.LTC_MAG_TEXTURE;
 
 			WebGLUniforms.upload(
-				_gl, materialProperties.uniformsList, m_uniforms, _this );
+					_gl, materialProperties.uniformsList, m_uniforms, _this );
 
 		}
 
@@ -2371,22 +2396,25 @@ function WebGLRenderer( parameters ) {
 	function setupLights( lights, camera ) {
 
 		var l, ll, light,
-			r = 0, g = 0, b = 0,
 			color,
 			intensity,
 			distance,
 			shadowMap,
 
 			affectedLayers,
+			hashMap,
 
 			viewMatrix = camera.matrixWorldInverse,
 
-		ambiantLength = 0,
+		ambientLength = 0,
 		directionalLength = 0,
 		pointLength = 0,
 		spotLength = 0,
 		rectAreaLength = 0,
 		hemiLength = 0;
+
+		hashMap = [];
+		hashMap.length = 32 * ( NumberOfLightTypes + 1 );
 
 		for ( l = 0, ll = lights.length; l < ll; l ++ ) {
 
@@ -2404,8 +2432,9 @@ function WebGLRenderer( parameters ) {
 
 				color.multiplyScalar(intensity);
 
-				_lights.ambiantAffectedLayers[ ambiantLength] = affectedLayers;
-				_lights.ambiant[ ambiantLength ++ ] = color;
+				_lights.ambientAffectedLayers[ ambientLength ] = affectedLayers;
+				_lights.ambient[ ambientLength ++ ] = color;
+				addLightToLightHashMap(affectedLayers,hashMap,0,false);
 
 			} else if ( light.isDirectionalLight ) {
 
@@ -2431,6 +2460,8 @@ function WebGLRenderer( parameters ) {
 				_lights.directionalShadowMatrix[ directionalLength ] = light.shadow.matrix;
 				_lights.directionalAffectedLayers[ directionalLength ] = affectedLayers;
 				_lights.directional[ directionalLength ++ ] = uniforms;
+
+				addLightToLightHashMap(affectedLayers,hashMap,1,light.castShadow);
 
 			} else if ( light.isSpotLight ) {
 
@@ -2466,6 +2497,8 @@ function WebGLRenderer( parameters ) {
 				_lights.spotAffectedLayers[ spotLength ] = affectedLayers;
 				_lights.spot[ spotLength ++ ] = uniforms;
 
+				addLightToLightHashMap(affectedLayers,hashMap,2,light.castShadow);
+
 			} else if ( light.isRectAreaLight ) {
 
 				var uniforms = lightCache.get( light );
@@ -2497,6 +2530,8 @@ function WebGLRenderer( parameters ) {
 				// uniforms.distance = distance;
 				_lights.rectAreaAffectedLayers[ rectAreaLength ] = affectedLayers;
 				_lights.rectArea[ rectAreaLength ++ ] = uniforms;
+
+				addLightToLightHashMap(affectedLayers,hashMap,3,light.castShadow);
 
 			} else if ( light.isPointLight ) {
 
@@ -2535,6 +2570,8 @@ function WebGLRenderer( parameters ) {
 				_lights.pointAffectedLayers[ pointLength ] = affectedLayers;
 				_lights.point[ pointLength ++ ] = uniforms;
 
+				addLightToLightHashMap(affectedLayers,hashMap,4,light.castShadow);
+
 			} else if ( light.isHemisphereLight ) {
 
 				var uniforms = lightCache.get( light );
@@ -2549,11 +2586,13 @@ function WebGLRenderer( parameters ) {
 				_lights.hemiAffectedLayers[ hemiLength ] = affectedLayers;
 				_lights.hemi[ hemiLength ++ ] = uniforms;
 
+				addLightToLightHashMap(affectedLayers,hashMap,5,light.castShadow);
+
 			}
 
 		}
 
-		_lights.ambiant.length = ambiantLength;
+		_lights.ambient.length = ambientLength;
 		_lights.directional.length = directionalLength;
 		_lights.spot.length = spotLength;
 		_lights.rectArea.length = rectAreaLength;
@@ -2561,8 +2600,8 @@ function WebGLRenderer( parameters ) {
 		_lights.hemi.length = hemiLength;
 
 		// TODO (sam-g-steel) why aren't we using join
-		_lights.hash = ambiantLength + ',' + directionalLength + ',' + pointLength + ',' + spotLength + ',' + rectAreaLength + ',' + hemiLength + ',' + _lights.shadows.length;
-
+		_lights.hash = ambientLength + ',' + directionalLength + ',' + pointLength + ',' + spotLength + ',' + rectAreaLength + ',' + hemiLength + ',' + _lights.shadows.length;
+		_lights.layeredHashes = arrayToHashes(hashMap);
 	}
 
 	// GL state setting
@@ -2573,6 +2612,60 @@ function WebGLRenderer( parameters ) {
 		state.setFlipSided( frontFaceDirection === FrontFaceDirectionCW );
 
 	};
+
+	// Per-Layer light hashes via a map
+
+	function addLightToLightHashMap(layers,hashMap,typeIndex,castShadow){
+
+		var i = 0,
+		mask = 0,
+		index = 0;
+
+		for( i = 0; i < 32; i++ ){
+
+			mask = 1 << i;
+
+			if( mask & layers.mask){
+
+				index = i * ( NumberOfLightTypes + 1 ) + typeIndex;
+				undefinedToZero( hashMap, index );
+				hashMap[ index ]++;
+
+				index = ( i + 1 ) * ( NumberOfLightTypes + 1 ) - 1;
+				undefinedToZero( hashMap, index );
+				hashMap[index] += castShadow ? 0 : 1;
+
+			}
+
+		}
+
+		function undefinedToZero( array, arrayIndex ){
+
+			if( !array[ arrayIndex ] ){
+
+				array[arrayIndex] = 0;
+
+			}
+
+		}
+
+	}
+
+	function arrayToHashes( array ){
+
+		var i = 0,
+		hashes = [],
+		begin = 0;
+
+		for ( i = 0; i < 32; i++ ){
+
+			begin = i*(NumberOfLightTypes + 1);
+			hashes.push(array.slice(begin,begin + NumberOfLightTypes + 1).join(','));
+
+		}
+		return hashes;
+
+	}
 
 	// Textures
 
