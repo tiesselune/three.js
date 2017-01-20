@@ -203,6 +203,7 @@
 
 				ground.castShadow = false;
 				ground.receiveShadow = true;
+				ground.layers.set(1);
 
 				scene.add( ground );
 
@@ -279,7 +280,7 @@
 					}
 
 					var mesh = new THREE.Mesh( geometry, material );
-					mesh.layers.set(2);
+					mesh.layers.set(1);
 					mesh.speed = speed;
 
 					var clip = geometry.animations[ 0 ];
