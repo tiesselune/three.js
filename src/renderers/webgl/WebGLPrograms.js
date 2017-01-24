@@ -209,7 +209,7 @@ function WebGLPrograms( renderer, capabilities ) {
 
 			for ( i = 0; i < lightLayers.length; i++ ){
 
-				if( object.layers.test( lightLayers[i] ) ){
+				if( !object.material || object.material.lightLayers.test( lightLayers[i] ) ){
 
 					result ++;
 

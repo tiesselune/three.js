@@ -27,7 +27,8 @@
 	<body>
 
 		<div id="info">
-		<a href="http://threejs.org" target="_blank">three.js</a> - shadowmap - models by <a href="http://mirada.com/">mirada</a> from <a href="http://ro.me">rome</a><br />
+		<a href="http://threejs.org" target="_blank">three.js</a> -
+		 - models by <a href="http://mirada.com/">mirada</a> from <a href="http://ro.me">rome</a><br />
 		move camera with WASD / RF + mouse<br />
 		t: toggle HUD
 		</div>
@@ -35,9 +36,6 @@
 		<script src="../build/three.js"></script>
 
 		<script src="js/controls/FirstPersonControls.js"></script>
-
-		<script src="js/shaders/UnpackDepthRGBAShader.js"></script>
-		<script src="js/utils/ShadowMapViewer.js"></script>
 
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
@@ -47,9 +45,6 @@
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
-
-			var HUD_MARGIN = 0.05;
-
 			var SCREEN_WIDTH = window.innerWidth;
 			var SCREEN_HEIGHT = window.innerHeight;
 			var FLOOR = - 250;
@@ -62,11 +57,8 @@
 			var mixer, morphs = [];
 
 			var light1,light2;
-			var lightShadowMapViewer;
 
 			var clock = new THREE.Clock();
-
-			var showHUD = false;
 
 			init();
 			animate();
@@ -82,6 +74,7 @@
 				camera = new THREE.PerspectiveCamera( 23, SCREEN_WIDTH / SCREEN_HEIGHT, NEAR, FAR );
 				camera.position.set( 700, 50, 1900 );
 				camera.layers.toggle(1);
+				camera.layers.toggle(2);
 
 				controls = new THREE.FirstPersonControls( camera );
 
@@ -107,7 +100,7 @@
 				scene.add( ambient );
 
 				light1 = new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2 );
-				light1.position.set( 0, 1500, 1000 );
+				light1.position.set( 0, 1000, 1200 );
 				light1.target.position.set( 0, 0, 0 );
 
 				light1.castShadow = true;
@@ -121,7 +114,21 @@
 
 				scene.add( light1 );
 
-				createHUD();
+				light2 = new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2 );
+				light2.position.set( 0, 1500, -1000 );
+				light2.target.position.set( 0, 0, 0 );
+
+				light2.castShadow = true;
+
+				light2.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 50, 1, 1000, 3000 ) );
+				light2.shadow.bias = 0.00015;
+
+				light2.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+				light2.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+				light2.affectedLayers.set(2);
+
+				scene.add( light2 );
+
 				createScene();
 
 				// RENDERER
@@ -170,21 +177,9 @@
 				switch ( event.keyCode ) {
 
 					case 84:	/*t*/
-						showHUD = ! showHUD;
 						break;
 
 				}
-
-			}
-
-			function createHUD() {
-
-				lightShadowMapViewer = new THREE.ShadowMapViewer( light1 );
-				lightShadowMapViewer.position.x = 10;
-				lightShadowMapViewer.position.y = SCREEN_HEIGHT - ( SHADOW_MAP_HEIGHT / 4 ) - 10;
-				lightShadowMapViewer.size.width = SHADOW_MAP_WIDTH / 4;
-				lightShadowMapViewer.size.height = SHADOW_MAP_HEIGHT / 4;
-				lightShadowMapViewer.update();
 
 			}
 
@@ -230,6 +225,7 @@
 					var centerOffset = - 0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
 
 					var textMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, specular: 0xffffff } );
+					textMaterial.lightLayers.set(2);
 
 					var mesh = new THREE.Mesh( textGeo, textMaterial );
 					mesh.position.x = centerOffset;
@@ -237,6 +233,7 @@
 
 					mesh.castShadow = true;
 					mesh.receiveShadow = true;
+					mesh.layers.set(2);
 
 					scene.add( mesh );
 
@@ -272,7 +269,7 @@
 				function addMorph( geometry, speed, duration, x, y, z, fudgeColor ) {
 
 					var material = new THREE.MeshLambertMaterial( { color: 0xffaa55, morphTargets: true, vertexColors: THREE.FaceColors } );
-
+					material.lightLayers.set(1);
 					if ( fudgeColor ) {
 
 						material.color.offsetHSL( 0, Math.random() * 0.5 - 0.25, Math.random() * 0.5 - 0.25 );
@@ -371,13 +368,6 @@
 				renderer.clear();
 				renderer.render( scene, camera );
 
-				// Render debug HUD with shadow map
-
-				if ( showHUD ) {
-
-					lightShadowMapViewer.render( renderer );
-
-				}
 
 			}
 

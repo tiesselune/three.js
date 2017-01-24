@@ -1634,21 +1634,21 @@ function WebGLRenderer( parameters ) {
 
 		// store the light setup it was created for
 
-		materialProperties.lightsHash = getMaterialLightHash( object.layers, _lights.layeredHashes );
+		materialProperties.lightsHash = getMaterialLightHash( material.lightLayers, _lights.layeredHashes );
 
 		if ( material.lights ) {
 
 			// get all lights affecting this object's layers
 
-			var directionalSetup = filterLights( object.layers, _lights.directionalAffectedLayers, _lights.directional, _lights.directionalShadowMap, _lights.directionalShadowMatrix );
-			var spotSetup = filterLights( object.layers, _lights.spotAffectedLayers, _lights.spot, _lights.spotShadowMap, _lights.spotShadowMatrix );
-			var rectAreaSetup = filterLights( object.layers, _lights.rectAreaAffectedLayers, _lights.rectArea );
-			var pointSetup = filterLights( object.layers, _lights.pointAffectedLayers, _lights.point, _lights.pointShadowMap, _lights.pointShadowMatrix );
-			var hemiSetup = filterLights( object.layers, _lights.hemiAffectedLayers, _lights.hemi);
+			var directionalSetup = filterLights( material.lightLayers, _lights.directionalAffectedLayers, _lights.directional, _lights.directionalShadowMap, _lights.directionalShadowMatrix );
+			var spotSetup = filterLights( material.lightLayers, _lights.spotAffectedLayers, _lights.spot, _lights.spotShadowMap, _lights.spotShadowMatrix );
+			var rectAreaSetup = filterLights( material.lightLayers, _lights.rectAreaAffectedLayers, _lights.rectArea );
+			var pointSetup = filterLights( material.lightLayers, _lights.pointAffectedLayers, _lights.point, _lights.pointShadowMap, _lights.pointShadowMatrix );
+			var hemiSetup = filterLights( material.lightLayers, _lights.hemiAffectedLayers, _lights.hemi);
 
 			// wire up the material to this renderer's lighting state
 
-			uniforms.ambientLightColor.value = filterAmbientLights( object.layers, _lights.ambientAffectedLayers, _lights.ambient );
+			uniforms.ambientLightColor.value = filterAmbientLights( material.lightLayers, _lights.ambientAffectedLayers, _lights.ambient );
 			uniforms.directionalLights.value = directionalSetup.lights;
 			uniforms.spotLights.value = spotSetup.lights;
 			uniforms.rectAreaLights.value = rectAreaSetup.lights;
@@ -1675,7 +1675,7 @@ function WebGLRenderer( parameters ) {
 		/* Function to only consider lights and shadow maps/matrices that should
 		affect the considered object */
 
-		function filterLights( objectLayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
+		function filterLights( materialLayers, lightAffectedLayers, lights, shadowMaps, shadowMatrices ) {
 
 			var result = { lights : [], shadowMaps : [], shadowMatrices : []};
 			var i = 0, light, lightLayers;
@@ -1686,7 +1686,7 @@ function WebGLRenderer( parameters ) {
 				light = lights[i];
 				lightLayers = lightAffectedLayers[i];
 
-				if ( lightLayers.test( objectLayers) ){
+				if ( lightLayers.test( materialLayers) ){
 
 					result.lights[lightsLength++] = light ;
 
@@ -1709,7 +1709,7 @@ function WebGLRenderer( parameters ) {
 
 		/* Merge all ambient colors affecting the object's layer into a single color. */
 
-		function filterAmbientLights( objectLayers, lightAffectedLayers, lights ) {
+		function filterAmbientLights( materialLayers, lightAffectedLayers, lights ) {
 			var result = [0,0,0];
 			var i = 0, light, lightLayers;
 
@@ -1718,7 +1718,7 @@ function WebGLRenderer( parameters ) {
 				light = lights[i];
 				lightLayers = lightAffectedLayers[i]
 
-				if ( lightLayers.test( objectLayers ) ){
+				if ( lightLayers.test( materialLayers ) ){
 
 					result[0] += light.r;
 					result[1] += light.g;
@@ -1812,8 +1812,8 @@ function WebGLRenderer( parameters ) {
 
 				material.needsUpdate = true;
 
-			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( object.layers, _lights.layeredHashes ) ) {
-				
+			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( material.lightLayers, _lights.layeredHashes ) ) {
+
 				material.needsUpdate = true;
 
 			} else if ( materialProperties.numClippingPlanes !== undefined &&

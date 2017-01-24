@@ -439,8 +439,8 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 		var visible = ( object.layers.mask & camera.layers.mask ) !== 0;
 
 		//Objects not affected by current light should not project shadows.
-		
-		var projectsShadowOnLayer = object.layers.test(shadowLayers);
+
+		var projectsShadowOnLayer = !object.material || object.material.lightLayers.test(shadowLayers);
 
 		if ( visible && projectsShadowOnLayer && ( object.isMesh || object.isLine || object.isPoints ) ) {
 
