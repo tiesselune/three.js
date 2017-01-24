@@ -1648,7 +1648,7 @@ function WebGLRenderer( parameters ) {
 
 			// wire up the material to this renderer's lighting state
 
-			uniforms.ambientLightColor.value = filterAmbiantLights( object.layers, _lights.ambientAffectedLayers, _lights.ambient );
+			uniforms.ambientLightColor.value = filterAmbientLights( object.layers, _lights.ambientAffectedLayers, _lights.ambient );
 			uniforms.directionalLights.value = directionalSetup.lights;
 			uniforms.spotLights.value = spotSetup.lights;
 			uniforms.rectAreaLights.value = rectAreaSetup.lights;
@@ -1709,7 +1709,7 @@ function WebGLRenderer( parameters ) {
 
 		/* Merge all ambient colors affecting the object's layer into a single color. */
 
-		function filterAmbiantLights( objectLayers, lightAffectedLayers, lights ) {
+		function filterAmbientLights( objectLayers, lightAffectedLayers, lights ) {
 			var result = [0,0,0];
 			var i = 0, light, lightLayers;
 
@@ -1813,6 +1813,7 @@ function WebGLRenderer( parameters ) {
 				material.needsUpdate = true;
 
 			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( object.layers, _lights.layeredHashes ) ) {
+				
 				material.needsUpdate = true;
 
 			} else if ( materialProperties.numClippingPlanes !== undefined &&
