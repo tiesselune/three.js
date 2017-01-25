@@ -170,8 +170,7 @@ function WebGLRenderer( parameters ) {
 
 		_lights = {
 
-			hash: '',
-			layeredHashes:[],
+			config: new Uint16Array(32*NumberOfLightTypes),
 
 		ambient: [],
 		ambientAffectedLayers: [],
@@ -1634,7 +1633,7 @@ function WebGLRenderer( parameters ) {
 
 		// store the light setup it was created for
 
-		materialProperties.lightsHash = getMaterialLightHash( material.lightLayers, _lights.layeredHashes );
+		materialProperties.lightsHash = getMaterialLightHash( material.lightLayers, _lights.config );
 
 		if ( material.lights ) {
 
@@ -1736,24 +1735,26 @@ function WebGLRenderer( parameters ) {
 
 	//Get a unique Hash for this light setup taking layers into consideration.
 
-	function getMaterialLightHash( layers, hashes ){
+	function getMaterialLightHash( layers, config ){
 
 		var i = 0,
 		mask = 0,
-		hashArray = [];
+		begin = 0,
+		materialHash = "";
 
-		for( i + 0; i < 32; i++ ){
+		for( i = 0; i < 32; i++ ){
 
 			mask = 1 << i;
 
 			if(mask & layers.mask){
 
-				hashArray.push( i + "->" + hashes[i] );
+				begin = i * NumberOfLightTypes;
+				materialHash += config.slice( begin, begin + NumberOfLightTypes) + "|";
 
 			}
 
 		}
-		return hashArray.join('|');
+		return materialHash;
 
 	}
 
@@ -1812,7 +1813,7 @@ function WebGLRenderer( parameters ) {
 
 				material.needsUpdate = true;
 
-			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( material.lightLayers, _lights.layeredHashes ) ) {
+			} else if ( material.lights && materialProperties.lightsHash !== getMaterialLightHash( material.lightLayers, _lights.config ) ) {
 
 				material.needsUpdate = true;
 
@@ -2410,7 +2411,6 @@ function WebGLRenderer( parameters ) {
 			shadowMap,
 
 			affectedLayers,
-			hashMap,
 
 			viewMatrix = camera.matrixWorldInverse,
 
@@ -2421,8 +2421,7 @@ function WebGLRenderer( parameters ) {
 		rectAreaLength = 0,
 		hemiLength = 0;
 
-		hashMap = [];
-		hashMap.length = 32 * ( NumberOfLightTypes + 1 );
+		resetArray(_lights.config);
 
 		for ( l = 0, ll = lights.length; l < ll; l ++ ) {
 
@@ -2442,7 +2441,7 @@ function WebGLRenderer( parameters ) {
 
 				_lights.ambientAffectedLayers[ ambientLength ] = affectedLayers;
 				_lights.ambient[ ambientLength ++ ] = color;
-				addLightToLightHashMap(affectedLayers,hashMap,0,false);
+				addLightToLightConfig(affectedLayers,_lights.config,0,false);
 
 			} else if ( light.isDirectionalLight ) {
 
@@ -2469,7 +2468,7 @@ function WebGLRenderer( parameters ) {
 				_lights.directionalAffectedLayers[ directionalLength ] = affectedLayers;
 				_lights.directional[ directionalLength ++ ] = uniforms;
 
-				addLightToLightHashMap(affectedLayers,hashMap,1,light.castShadow);
+				addLightToLightConfig(affectedLayers,_lights.config,1,light.castShadow);
 
 			} else if ( light.isSpotLight ) {
 
@@ -2505,7 +2504,7 @@ function WebGLRenderer( parameters ) {
 				_lights.spotAffectedLayers[ spotLength ] = affectedLayers;
 				_lights.spot[ spotLength ++ ] = uniforms;
 
-				addLightToLightHashMap(affectedLayers,hashMap,2,light.castShadow);
+				addLightToLightConfig(affectedLayers,_lights.config,2,light.castShadow);
 
 			} else if ( light.isRectAreaLight ) {
 
@@ -2539,7 +2538,7 @@ function WebGLRenderer( parameters ) {
 				_lights.rectAreaAffectedLayers[ rectAreaLength ] = affectedLayers;
 				_lights.rectArea[ rectAreaLength ++ ] = uniforms;
 
-				addLightToLightHashMap(affectedLayers,hashMap,3,light.castShadow);
+				addLightToLightConfig(affectedLayers,_lights.config,3,light.castShadow);
 
 			} else if ( light.isPointLight ) {
 
@@ -2578,7 +2577,7 @@ function WebGLRenderer( parameters ) {
 				_lights.pointAffectedLayers[ pointLength ] = affectedLayers;
 				_lights.point[ pointLength ++ ] = uniforms;
 
-				addLightToLightHashMap(affectedLayers,hashMap,4,light.castShadow);
+				addLightToLightConfig(affectedLayers,_lights.config,4,light.castShadow);
 
 			} else if ( light.isHemisphereLight ) {
 
@@ -2594,7 +2593,7 @@ function WebGLRenderer( parameters ) {
 				_lights.hemiAffectedLayers[ hemiLength ] = affectedLayers;
 				_lights.hemi[ hemiLength ++ ] = uniforms;
 
-				addLightToLightHashMap(affectedLayers,hashMap,5,light.castShadow);
+				addLightToLightConfig(affectedLayers,_lights.config,5,light.castShadow);
 
 			}
 
@@ -2607,9 +2606,6 @@ function WebGLRenderer( parameters ) {
 		_lights.point.length = pointLength;
 		_lights.hemi.length = hemiLength;
 
-		// Compute an array of light hashes (one per layer)
-
-		_lights.layeredHashes = arrayToHashes(hashMap);
 	}
 
 	// GL state setting
@@ -2623,7 +2619,7 @@ function WebGLRenderer( parameters ) {
 
 	// Function used to count lights per type and per layer using a flat array.
 
-	function addLightToLightHashMap(layers,hashMap,typeIndex,castShadow){
+	function addLightToLightConfig(layers,config,typeIndex,castShadow){
 
 		var i = 0,
 		mask = 0,
@@ -2635,23 +2631,8 @@ function WebGLRenderer( parameters ) {
 
 			if( mask & layers.mask){
 
-				index = i * ( NumberOfLightTypes + 1 ) + typeIndex;
-				undefinedToZero( hashMap, index );
-				hashMap[ index ]++;
-
-				index = ( i + 1 ) * ( NumberOfLightTypes + 1 ) - 1;
-				undefinedToZero( hashMap, index );
-				hashMap[index] += castShadow ? 0 : 1;
-
-			}
-
-		}
-
-		function undefinedToZero( array, arrayIndex ){
-
-			if( !array[ arrayIndex ] ){
-
-				array[arrayIndex] = 0;
+				index = i * NumberOfLightTypes + typeIndex;
+				config[index]++;
 
 			}
 
@@ -2659,21 +2640,17 @@ function WebGLRenderer( parameters ) {
 
 	}
 
-	// Function to make layer-specific light hashes from an array of specific size.
+	// Reset the an array to zero without using array.fill()
 
-	function arrayToHashes( array ){
+	function resetArray( array ){
 
-		var i = 0,
-		hashes = [],
-		begin = 0;
+		var i = 0;
 
-		for ( i = 0; i < 32; i++ ){
+		for( i = 0; i < array.length; i++ ){
 
-			begin = i*(NumberOfLightTypes + 1);
-			hashes.push(array.slice(begin,begin + NumberOfLightTypes + 1).join(','));
+			array[i] = 0;
 
 		}
-		return hashes;
 
 	}
 
