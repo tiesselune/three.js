@@ -61,7 +61,7 @@
 
 			var mixer, morphs = [];
 
-			var light;
+			var light, light2;
 			var lightShadowMapViewer;
 
 			var clock = new THREE.Clock();
@@ -106,7 +106,7 @@
 				scene.add( ambient );
 
 				light = new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2 );
-				light.position.set( 0, 1500, 1000 );
+				light.position.set( 0, 800, 600 );
 				light.target.position.set( 0, 0, 0 );
 
 				light.castShadow = true;
@@ -118,6 +118,20 @@
 				light.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
 
 				scene.add( light );
+
+				light2 = new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2 );
+				light2.position.set( 0, 1500, -1000 );
+				light2.target.position.set( 0, 0, 0 );
+
+				light2.castShadow = true;
+
+				light2.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 50, 1, 1200, 2500 ) );
+				light2.shadow.bias = 0.0001;
+
+				light2.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+				light2.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+
+				scene.add( light2 );
 
 				createHUD();
 				createScene();
@@ -177,7 +191,7 @@
 
 			function createHUD() {
 
-				lightShadowMapViewer = new THREE.ShadowMapViewer( light );
+				lightShadowMapViewer = new THREE.ShadowMapViewer( light2 );
 				lightShadowMapViewer.position.x = 10;
 				lightShadowMapViewer.position.y = SCREEN_HEIGHT - ( SHADOW_MAP_HEIGHT / 4 ) - 10;
 				lightShadowMapViewer.size.width = SHADOW_MAP_WIDTH / 4;

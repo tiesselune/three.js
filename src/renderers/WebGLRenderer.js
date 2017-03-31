@@ -1744,7 +1744,8 @@ function WebGLRenderer( parameters ) {
 		var i = 0,
 		mask = 0,
 		begin = 0,
-		materialHash = "";
+		materialHash = "",
+		arrayCopy = [];
 
 		for( i = 0; i < 32; i++ ){
 
@@ -1753,7 +1754,8 @@ function WebGLRenderer( parameters ) {
 			if(mask & layers.mask){
 
 				begin = i * NumberOfLightTypes;
-				materialHash += config.slice( begin, begin + NumberOfLightTypes) + "|";
+				arrayCopy
+				materialHash += Array.prototype.slice.call(config,begin, begin + NumberOfLightTypes) + "|";
 
 			}
 
